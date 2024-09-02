@@ -1,16 +1,18 @@
-import os
-import cv2
 import argparse
 import glob
+import os
+
+import cv2
 import torch
 from torchvision.transforms.functional import normalize
-from basicsr.utils import imwrite, img2tensor, tensor2img
+
+from basicsr.utils import img2tensor, imwrite, tensor2img
 from basicsr.utils.download_util import load_file_from_url
-from basicsr.utils.misc import gpu_is_available, get_device
+from basicsr.utils.misc import get_device, gpu_is_available
+from basicsr.utils.registry import ARCH_REGISTRY
 from facelib.utils.face_restoration_helper import FaceRestoreHelper
 from facelib.utils.misc import is_gray
-
-from basicsr.utils.registry import ARCH_REGISTRY
+from futils import imread_utf8, imwrite_utf8
 
 pretrain_model_url = {
     'restoration': 'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth',
@@ -170,12 +172,14 @@ if __name__ == '__main__':
             img_name = os.path.basename(img_path)
             basename, ext = os.path.splitext(img_name)
             print(f'[{i+1}/{test_img_num}] Processing: {img_name}')
-            img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            img = imread_utf8(img_path, cv2.IMREAD_COLOR)
         else: # for video processing
             basename = str(i).zfill(6)
             img_name = f'{video_name}_{basename}' if input_video else basename
             print(f'[{i+1}/{test_img_num}] Processing: {img_name}')
             img = img_path
+
+        assert img is not None, "图像加载错误"
 
         if args.has_aligned: 
             # the input faces are already cropped and aligned
@@ -233,7 +237,7 @@ if __name__ == '__main__':
             # save cropped face
             if not args.has_aligned: 
                 save_crop_path = os.path.join(result_root, 'cropped_faces', f'{basename}_{idx:02d}.png')
-                imwrite(cropped_face, save_crop_path)
+                imwrite_utf8(cropped_face, save_crop_path)
             # save restored face
             if args.has_aligned:
                 save_face_name = f'{basename}.png'
@@ -242,14 +246,14 @@ if __name__ == '__main__':
             if args.suffix is not None:
                 save_face_name = f'{save_face_name[:-4]}_{args.suffix}.png'
             save_restore_path = os.path.join(result_root, 'restored_faces', save_face_name)
-            imwrite(restored_face, save_restore_path)
+            imwrite_utf8(restored_face, save_restore_path)
 
         # save restored img
         if not args.has_aligned and restored_img is not None:
             if args.suffix is not None:
                 basename = f'{basename}_{args.suffix}'
             save_restore_path = os.path.join(result_root, 'final_results', f'{basename}.png')
-            imwrite(restored_img, save_restore_path)
+            imwrite_utf8(restored_img, save_restore_path)
 
     # save enhanced video
     if input_video:
